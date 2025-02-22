@@ -1,74 +1,96 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { FlatList, StatusBar, StyleSheet, Text, View } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import { useMemo, useRef, useState } from 'react';
+import { CustomMarker } from '@/components/marker';
+import { BarDetails } from '@/components/bar-details';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+
+const FEATURES = [
+  'Живая музыка',
+  'Спортивные трансляции',
+  'Караоке',
+  'Детская зона',
+  'Игровые автоматы',
+  'Танцпол',
+  'Настольные игры',
+  'Кальян',
+];
+
+const getRandomFeatures = () => {
+  const count = Math.floor(Math.random() * 4) + 2; // от 2 до 5 фич
+  return [...new Set(Array.from({ length: count }, () => FEATURES[Math.floor(Math.random() * FEATURES.length)]))];
+};
+
+const getRandomOffset = () => (Math.random() - 0.5) * 0.1;
+
+export type BarLocation = {
+  id: string;
+  latitude: number,
+  longitude: number;
+  title: string;
+  description: string;
+  image: string;
+  features: string[];
+};
+
+export const LOCATIONS = Array.from({ length: 20 }, (_, index) => ({
+  id: (index + 1).toString(),
+  latitude: 42.9000 + index * 0.002 + getRandomOffset(),
+  longitude: 71.2667 + (index % 10) * 0.002 + getRandomOffset(),
+  title: `Место ${index + 1}`,
+  description: `Описание для места ${index + 1}`,
+  image: `https://images.pexels.com/photos/1269025/pexels-photo-1269025.jpeg`, // случайные фото
+  features: getRandomFeatures(),
+}));
+
+const INITIAL_REGION = {
+  latitude: 42.9000, // Широта Тараза
+  longitude: 71.3667, // Долгота Тараза
+  latitudeDelta: 1, // Уменьшил масштаб для лучшего отображения
+  longitudeDelta: 1,
+};
 
 export default function HomeScreen() {
+  const mapRef = useRef<MapView | null>(null);
+  const [selectedBar, setSelectedBar] = useState<null | BarLocation>(null);
+
+  const snapPoints = useMemo(() => [50, '25%', '50%', '90%'], []);
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ThemedView style={{ flex: 1 }}>
+      <MapView style={StyleSheet.absoluteFill}
+        initialRegion={INITIAL_REGION}
+        provider={PROVIDER_GOOGLE}
+        // showsUserLocation
+        // showsMyLocationButton
+        ref={mapRef}
+      >
+        {LOCATIONS.map((location) => (
+          <CustomMarker barLocation={location} key={location.id} onPress={() => setSelectedBar(location)} />
+        ))}
+
+      </MapView>
+      {/* {
+        selectedBar && (
+          <View style={{ position: 'absolute', bottom: 50, left: 10, right: 10 }}>
+            <BarDetails barDetails={selectedBar} />
+          </View>
+        )
+      } */}
+      <BottomSheet
+        // ref={bottomSheetRef}
+        // onChange={handleSheetChanges}
+        // enablePanDownToClose
+        snapPoints={snapPoints}
+        index={0}
+      >
+        <BottomSheetView style={{ flex: 1 }}>
+          <Text>{LOCATIONS.length} bars here</Text>
+          <FlatList data={LOCATIONS} contentContainerStyle={{ gap: 10, padding: 10 }} renderItem={({ item }) => (<BarDetails barDetails={item} key={item.id} />)} />
+          {/* <Text>Awesome 🎉</Text> */}
+        </BottomSheetView>
+      </BottomSheet>
+    </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
